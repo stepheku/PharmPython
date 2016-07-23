@@ -1,4 +1,4 @@
-import urllib2
+import urllib.request
 import urllib
 import filecmp
 import subprocess
@@ -13,10 +13,11 @@ pdfFileName = ''
 filePath = os.path.dirname(os.path.abspath(__file__))
 logFileName = filePath+'/'+logFileName
 cdcVisUrl = 'http://www.cdc.gov/vaccines/hcp/vis/'
-cdcVisReq = urllib2.Request(cdcVisUrl)#,None,headers)
-cdcVisResp = urllib2.urlopen(cdcVisReq)
+cdcVisReq = urllib.request.Request(cdcVisUrl)#,None,headers)
+cdcVisResp = urllib.request.urlopen(cdcVisReq)
 cdcVisRespData = cdcVisResp.read()
 cdcVisLinks = re.findall(r'/vaccines/hcp/vis/vis-statements/(.*?)"',str(cdcVisRespData))
+modifiedPage = []
 
 if os.path.isfile(filePath+logFileName) == False:
      subprocess.call(["touch",logFileName])
@@ -30,12 +31,12 @@ def writeLogEntry():
       modifiedPage.append(pdfFileName)
 for link in cdcVisLinks:
      visPageUrl = 'http://www.cdc.gov/vaccines/hcp/vis/vis-statements/' + link
-     visPageReq = urllib2.Request(visPageUrl)
-     visPageResp = urllib2.urlopen(visPageReq)
+     visPageReq = urllib.request.Request(visPageUrl)
+     visPageResp = urllib.request.urlopen(visPageReq)
      visPageRespData = visPageResp.read()
-     downloadPage = re.findall(r'/vaccines/hcp/vis/vis-statements/(.*?.pdf)"',str(visPageRespData))
+     downloadPage = re.findall(r'href="/vaccines/hcp/vis/vis-statements/(.*?.pdf)"',str(visPageRespData))
      downloadLink = 'http://www.cdc.gov/vaccines/hcp/vis/vis-statements/' + downloadPage[0]
-     urllib.urlretrieve(downloadLink,downloadPage[0]) # Download VIS PDF
+     urllib.request.urlretrieve(downloadLink,downloadPage[0]) # Download VIS PDF
      pdfFileName = downloadPage[0]
      if os.path.isfile(filePath+'/lib/'+downloadPage[0]) == True:
           #print downloadPage[0],'File exists in ./lib/ folder'
