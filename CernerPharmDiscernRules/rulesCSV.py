@@ -19,7 +19,7 @@ a.close()
 
 for row in ekm_list:
     for field in row:
-        primaries = re.findall(r'whose\sprimary\smnemonic\sis\s.*?d\d\d\d\d\d\s(.*?)\s2516',field)
+        primaries = re.findall(r'whose primary mnemonic is.*?[d|\d]\d{5} (.*?) 2516',field)
         for primary in primaries:
             with open(outputFileName,'a') as a:
                 writer = csv.writer(a,delimiter=',')
