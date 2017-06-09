@@ -1,62 +1,47 @@
-import urllib2
+import requests
 import re
 import csv
-
 from bs4 import BeautifulSoup
 
-def unescape(s):
-	s = s.replace("&amp;","&")
-	return s
+ndc_regex_pattern = r'\d{4,5}-\d{3,4}-\d{1,2}'
+output_file_name = 'output.csv'
 
-url = 'http://www.ashp.org/rss/shortages/#current'
-req = urllib2.Request(url)
-resp = urllib2.urlopen(req)
-resp_data = resp.read()
+url = 'https://www.ashp.org/rss/shortages/#current'
+resp = requests.get(url)
+resp_data = resp.content
 
 # Use regular expressions to only find drug shortage links
 # using ASHP's RSS feed
-links = re.findall(r'</title><link>(http://www.ashp.org/menu/DrugShortages/CurrentShortages/Bulletin.*?)</link>',str(resp_data))
+links = re.findall(r'<link>https://www.ashp.org.*?Id=(\d{1,})</link>', str(resp_data))
 
-for page in links:
-    url_page=unescape(page)
-    req = urllib2.Request(url_page)
-    resp = urllib2.urlopen(req)
-    resp_page = resp.read()
-
-    # Import html into BeautifulSoup
-    # 'html.parser' is used so Beautiful does not try to add ending tags. Otherwise soup.findAll is affected
-    soup = BeautifulSoup(resp_page, 'html.parser')
-
-    # Find all of the affected NDCs using regular expressions
-    # #####-####-## (format of a national drug code / NDC) in a 
-    # converted string using the HTML tag <span id="whatever">
-    affected_ndcs = re.findall(r'NDC (\d\d\d\d\d-\d\d\d\d-\d\d)', \
-    str(soup.findAll(id="ctl00_ContentPlaceHolder1_lblProducts")))
-
-    # Find all of the available NDCs using regular expressions
-    # #####-####-## (format of a national drug code / NDC) in a 
-    # converted string using the HTML tag <span id="whatever">
-    available_ndcs = re.findall(r'NDC (\d\d\d\d\d-\d\d\d\d-\d\d)', \
-    str(soup.findAll(id="ctl00_ContentPlaceHolder1_lblAvailable")))
-
-    # Find discontinued NDCs using the 'Affected NDCs' portion
-    # and regular expressions. Generally on the ASHP website,
-    # discontinued NDCs are like '10 mg, 90 count (NDC 63304-0827-90) - discontinued'
-    dced_ndcs = re.findall(r'NDC (\d\d\d\d\d-\d\d\d\d-\d\d).*discontinued', \
-    str(soup.findAll(id="ctl00_ContentPlaceHolder1_lblProducts")))
-
-    drug_name = re.findall(r'<span id="ctl00_ContentPlaceHolder1_lblDrug">(.*?)</span>', \
-    str(soup.findAll(id="ctl00_ContentPlaceHolder1_lblDrug")))
-    drug_name[0] = drug_name[0].decode('ascii','ignore').encode('ascii')
-
-    file_name = 'output.csv'
-    with open(file_name,'a') as f:
+def create_output_file_headers(file_name):
+    with open(output_file_name,'w') as f:
         writer = csv.writer(f,delimiter=',')
-        for item in affected_ndcs:
-            writer.writerow([drug_name[0],item,'Affected NDC'])
-        for item_2 in available_ndcs:
-            writer.writerow([drug_name[0],item_2,'Available NDC'])
-        for item_3 in dced_ndcs:
-            writer.writerow([drug_name[0],item_3,'Discontinued NDC'])
+        writer.writerow(['Drug name', 'NDC', 'Category'])
         f.close()
 
+def main():
+    for ids in links:
+        url_page = 'https://www.ashp.org/Drug-Shortages/Current-Shortages/Drug-Shortage-Detail.aspx?id=' + str(ids)
+        # Webpage uses redirects now
+        resp = requests.get(url_page, allow_redirects=True)
+        resp_page = resp.content
+    
+        # Import html into BeautifulSoup
+        soup = BeautifulSoup(resp_page, 'html.parser')
+        drug_name = re.findall(r'>(.*?)</span>', str(soup.findAll(id="1_lblDrug")))
+        affected_ndcs = re.findall(ndc_regex_pattern, str(soup.findAll(id="1_lblProducts")))
+        available_ndcs = re.findall(ndc_regex_pattern, str(soup.findAll(id="1_lblAvailable")))
+    
+        output_file_name = 'output.csv'
+        with open(output_file_name,'a') as f:
+            writer = csv.writer(f,delimiter=',')
+            for item in affected_ndcs:
+                writer.writerow([drug_name[0], item, 'Affected NDC'])
+            for item_2 in available_ndcs:
+                writer.writerow([drug_name[0], item_2, 'Available NDC'])
+            f.close()
+
+if __name__ == '__main__':
+    create_output_file_headers(output_file_name)
+    main()
