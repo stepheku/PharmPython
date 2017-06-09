@@ -1,0 +1,6 @@
+# Any CSVs or PDFs
+*.csv
+*.pdf
+
+# Any files inside a ./lib folder
+/lib
